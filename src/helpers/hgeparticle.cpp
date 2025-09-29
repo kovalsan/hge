@@ -260,9 +260,12 @@ void hgeParticleSystem::Render() {
   auto par = particles_;
 
   const auto col = info.sprite->GetColor();
+  
+  // Optimize: check color mode once before loop
+  const bool use_alpha_only = (info.colColorStart.r < 0);
 
   for (auto i = 0; i < particles_alive_; i++) {
-    if (info.colColorStart.r < 0) {
+    if (use_alpha_only) {
       info.sprite->SetColor(info.sprite->GetColor().set_a(par->colColor.a * 255));
     } else {
       info.sprite->SetColor(par->colColor.GetHWColor());
