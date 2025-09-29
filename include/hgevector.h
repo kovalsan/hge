@@ -82,13 +82,20 @@ public:
       return sqrtf(Dot(this));
     }
 
+    float LengthSq() const {
+      return Dot(this);
+    }
+
     float Angle(const hgeVector *v = nullptr) const;
 
     void Clamp(const float max) {
-      if (Length() > max) {
-        Normalize();
-        x *= max;
-        y *= max;
+      const float length_sq = LengthSq();
+      const float max_sq = max * max;
+      if (length_sq > max_sq) {
+        // Use fast inverse square root and avoid redundant calculations
+        const float inv_length = InvSqrt(length_sq);
+        x *= inv_length * max;
+        y *= inv_length * max;
       }
     }
 
