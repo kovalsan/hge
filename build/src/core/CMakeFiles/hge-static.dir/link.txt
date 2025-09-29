@@ -1,2 +1,0 @@
-/usr/bin/ar qc /home/runner/work/hge/hge/linklib/libhge-static.a "CMakeFiles/hge-static.dir/demo.cpp.o" "CMakeFiles/hge-static.dir/graphics.cpp.o" "CMakeFiles/hge-static.dir/ini.cpp.o" "CMakeFiles/hge-static.dir/input.cpp.o" "CMakeFiles/hge-static.dir/power.cpp.o" "CMakeFiles/hge-static.dir/random.cpp.o" "CMakeFiles/hge-static.dir/resource.cpp.o" "CMakeFiles/hge-static.dir/sound.cpp.o" "CMakeFiles/hge-static.dir/system.cpp.o" "CMakeFiles/hge-static.dir/timer.cpp.o"
-/usr/bin/ranlib /home/runner/work/hge/hge/linklib/libhge-static.a

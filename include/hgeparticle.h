@@ -20,24 +20,25 @@ enum {
 };
 
 struct hgeParticle {
+    // Group frequently accessed data together for better cache performance
     hgeVector vecLocation;
     hgeVector vecVelocity;
+    float fAge;
+    float fTerminalAge;
 
+    // Group physics data
     float fGravity;
     float fRadialAccel;
     float fTangentialAccel;
 
+    // Group visual data
     float fSpin;
     float fSpinDelta;
-
     float fSize;
     float fSizeDelta;
 
     hgeColor colColor; // + alpha
     hgeColor colColorDelta;
-
-    float fAge;
-    float fTerminalAge;
 };
 
 struct hgeParticleSystemInfo {

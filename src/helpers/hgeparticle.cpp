@@ -86,24 +86,27 @@ void hgeParticleSystem::Update(const float f_delta_time) {
     par->fAge += f_delta_time;
     if (par->fAge >= par->fTerminalAge) {
       particles_alive_--;
-      memcpy(par, &particles_[particles_alive_], sizeof(hgeParticle));
+      // Swap current particle with last alive particle (faster than memcpy)
+      *par = particles_[particles_alive_];
       i--;
       continue;
     }
 
-    hgeVector vecAccel = par->vecLocation - location_;
-    vecAccel.Normalize();
-    hgeVector vecAccel2 = vecAccel;
-    vecAccel *= par->fRadialAccel;
+    // Calculate radial acceleration vector (optimize: avoid Normalize if no acceleration)
+    if (par->fRadialAccel != 0.0f || par->fTangentialAccel != 0.0f) {
+      hgeVector vecAccel = par->vecLocation - location_;
+      vecAccel.Normalize();
+      hgeVector vecAccel2 = vecAccel;
+      vecAccel *= par->fRadialAccel;
 
-    // vecAccel2.Rotate(M_PI_2);
-    // the following is faster
-    ang = vecAccel2.x;
-    vecAccel2.x = -vecAccel2.y;
-    vecAccel2.y = ang;
+      // Fast 90-degree rotation (already optimized)
+      ang = vecAccel2.x;
+      vecAccel2.x = -vecAccel2.y;
+      vecAccel2.y = ang;
 
-    vecAccel2 *= par->fTangentialAccel;
-    par->vecVelocity += (vecAccel + vecAccel2) * f_delta_time;
+      vecAccel2 *= par->fTangentialAccel;
+      par->vecVelocity += (vecAccel + vecAccel2) * f_delta_time;
+    }
     par->vecVelocity.y += par->fGravity * f_delta_time;
 
     par->vecLocation += par->vecVelocity * f_delta_time;
@@ -112,11 +115,16 @@ void hgeParticleSystem::Update(const float f_delta_time) {
     par->fSize += par->fSizeDelta * f_delta_time;
     par->colColor += par->colColorDelta * f_delta_time;
 
-    if (update_bounding_box_) {
-      bounding_box_.Encapsulate(par->vecLocation.x, par->vecLocation.y);
-    }
-
     par++;
+  }
+
+  // Update bounding box after all particles are processed (better cache performance)
+  if (update_bounding_box_) {
+    par = particles_;
+    for (i = 0; i < particles_alive_; i++) {
+      bounding_box_.Encapsulate(par->vecLocation.x, par->vecLocation.y);
+      par++;
+    }
   }
 
   // generate new particles
@@ -141,8 +149,9 @@ void hgeParticleSystem::Update(const float f_delta_time) {
       par->vecLocation.x += hge_->Random_Float(-2.0f, 2.0f);
       par->vecLocation.y += hge_->Random_Float(-2.0f, 2.0f);
 
-      ang = info.fDirection - M_PI_2 + hge_->Random_Float(0, info.fSpread) - info.fSpread /
-                                                                             2.0f;
+      // Optimize: pre-calculate half spread to avoid division in tight loop
+      const float half_spread = info.fSpread * 0.5f;
+      ang = info.fDirection - M_PI_2 + hge_->Random_Float(0, info.fSpread) - half_spread;
       if (info.bRelative) {
         ang += (prev_location_ - location_).Angle() + M_PI_2;
       }
@@ -158,12 +167,14 @@ void hgeParticleSystem::Update(const float f_delta_time) {
       par->fSize = hge_->Random_Float(info.fSizeStart,
                                       info.fSizeStart + (info.fSizeEnd - info.fSizeStart) *
                                                         info.fSizeVar);
-      par->fSizeDelta = (info.fSizeEnd - par->fSize) / par->fTerminalAge;
+      // Optimize: pre-calculate reciprocal to avoid division
+      const float inv_terminal_age = 1.0f / par->fTerminalAge;
+      par->fSizeDelta = (info.fSizeEnd - par->fSize) * inv_terminal_age;
 
       par->fSpin = hge_->Random_Float(info.fSpinStart,
                                       info.fSpinStart + (info.fSpinEnd - info.fSpinStart) *
                                                         info.fSpinVar);
-      par->fSpinDelta = (info.fSpinEnd - par->fSpin) / par->fTerminalAge;
+      par->fSpinDelta = (info.fSpinEnd - par->fSpin) * inv_terminal_age;
 
       par->colColor.r = hge_->Random_Float(info.colColorStart.r,
                                            info.colColorStart.r + (info.colColorEnd.r - info.
@@ -178,10 +189,10 @@ void hgeParticleSystem::Update(const float f_delta_time) {
                                            info.colColorStart.a + (info.colColorEnd.a - info.
                                                    colColorStart.a) * info.fAlphaVar);
 
-      par->colColorDelta.r = (info.colColorEnd.r - par->colColor.r) / par->fTerminalAge;
-      par->colColorDelta.g = (info.colColorEnd.g - par->colColor.g) / par->fTerminalAge;
-      par->colColorDelta.b = (info.colColorEnd.b - par->colColor.b) / par->fTerminalAge;
-      par->colColorDelta.a = (info.colColorEnd.a - par->colColor.a) / par->fTerminalAge;
+      par->colColorDelta.r = (info.colColorEnd.r - par->colColor.r) * inv_terminal_age;
+      par->colColorDelta.g = (info.colColorEnd.g - par->colColor.g) * inv_terminal_age;
+      par->colColorDelta.b = (info.colColorEnd.b - par->colColor.b) * inv_terminal_age;
+      par->colColorDelta.a = (info.colColorEnd.a - par->colColor.a) * inv_terminal_age;
 
       if (update_bounding_box_) {
         bounding_box_.Encapsulate(par->vecLocation.x, par->vecLocation.y);
