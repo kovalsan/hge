@@ -4,3 +4,4 @@ bin/
 linklib/
 *.log
 build/
+test_optimizations
